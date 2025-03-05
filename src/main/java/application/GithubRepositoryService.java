@@ -3,6 +3,7 @@ package application;
 import domain.GithubRepo;
 import domain.RepositoryService;
 import infrastructure.rest.github.GithubDataService;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -20,13 +21,11 @@ public class GithubRepositoryService implements RepositoryService {
     }
 
     @Override
-    public List<GithubRepo> getUserRepository(String username) {
-        final List<GithubRepo> response = githubDataService.getUserRepository(username);
-
-        if (response.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return response.stream().filter(repo -> !repo.isFork()).toList();
+    public Uni<List<GithubRepo>> getUserRepository(String username) {
+        return githubDataService.getUserRepository(username)
+                .onItem().transform(repos -> repos.stream()
+                        .filter(repo -> !repo.isFork())
+                        .toList())
+                .onFailure().recoverWithItem(Collections.emptyList());
     }
 }

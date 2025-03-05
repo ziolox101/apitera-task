@@ -20,7 +20,7 @@ import java.util.List;
 
 @Path("/repos")
 @Produces(MediaType.APPLICATION_JSON)
-public class RepositoryEndpoint {
+class RepositoryEndpoint {
 
     private final GithubRepositoryService githubRepositoryService;
 
@@ -31,11 +31,9 @@ public class RepositoryEndpoint {
 
     @GET
     @Path("/{username}")
-    @Blocking
     public Uni<List<RepoResponse>> repos(@PathParam("username") String username) {
-        final List<GithubRepo> result = githubRepositoryService.getUserRepository(username);
-        final List<RepoResponse> repoResponses = Mapper.toRepoResponseList(result);
-        return Uni.createFrom().item(repoResponses);
+        return githubRepositoryService.getUserRepository(username)
+                .onItem().transform(Mapper::toRepoResponseList);
     }
 
     @AllArgsConstructor

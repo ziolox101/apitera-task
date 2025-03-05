@@ -3,7 +3,8 @@ package infrastructure.rest.github;
 import domain.Branch;
 import domain.GithubRepo;
 import infrastructure.rest.github.response.GithubRepoBranchResponse;
-import infrastructure.rest.github.response.GithubRepoResponse;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -21,19 +22,23 @@ public class GithubDataService {
         this.githubRestClient = githubRestClient;
     }
 
-    public List<GithubRepo> getUserRepository(String username) {
-        final List<GithubRepoResponse> response = githubRestClient.getUserRepos(username);
-
-        if (response.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return response.stream()
-                .map(repo -> {
-                    final List<GithubRepoBranchResponse> branchResponse = githubRestClient.getUserRepoBranches(username, repo.getName());
-                    return new GithubRepo(repo.getName(), repo.getOwner().getLogin(), repo.isFork(), map(branchResponse));
+    public Uni<List<GithubRepo>> getUserRepository(String username) {
+        return githubRestClient.getUserRepos(username)
+                .onItem().transformToMulti(repos -> {
+                    if (repos.isEmpty()) {
+                        return Multi.createFrom().empty();
+                    }
+                    return Multi.createFrom().iterable(repos);
                 })
-                .toList();
+                .onItem().transformToUniAndMerge(repo -> githubRestClient.getUserRepoBranches(username, repo.getName())
+                        .onItem().transform(branches -> new GithubRepo(
+                                repo.getName(),
+                                repo.getOwner().getLogin(),
+                                repo.isFork(),
+                                map(branches)
+                        )))
+                .collect().asList()
+                .onFailure().recoverWithItem(Collections.emptyList());
     }
 
     private List<Branch> map(final List<GithubRepoBranchResponse> response) {

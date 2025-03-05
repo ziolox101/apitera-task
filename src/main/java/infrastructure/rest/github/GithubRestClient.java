@@ -4,6 +4,7 @@ package infrastructure.rest.github;
 import infrastructure.exception.ExternalServiceExceptionMapper;
 import infrastructure.rest.github.response.GithubRepoBranchResponse;
 import infrastructure.rest.github.response.GithubRepoResponse;
+import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -20,9 +21,9 @@ interface GithubRestClient {
 
     @GET
     @Path("/users/{username}/repos")
-    List<GithubRepoResponse> getUserRepos(@PathParam("username") String username);
+    Uni<List<GithubRepoResponse>> getUserRepos(@PathParam("username") String username);
 
     @GET
     @Path("/repos/{username}/{repo}/branches")
-    List<GithubRepoBranchResponse> getUserRepoBranches(@PathParam("username") final String username, @PathParam("repo") final String repo);
+    Uni<List<GithubRepoBranchResponse>> getUserRepoBranches(@PathParam("username") final String username, @PathParam("repo") final String repo);
 }
